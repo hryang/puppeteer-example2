@@ -1,5 +1,6 @@
 const setup = require('./lib/setup');
 const ossClient = require('./lib/oss-client');
+const path = require('path');
 
 let browser;
 
@@ -14,10 +15,13 @@ module.exports.initializer = (context, callback) => {
 
 module.exports.handler = (event, context, callback) => {
   let evtStr = event.toString();
-  let pageUrl = (evtStr.length !== 0 && evtStr.indexOf('{') !== 0) ? evtStr : 'https://www.aliyun.com';
+  let pageUrl = evtStr
   console.log(`page url: ${pageUrl}`);
+  dir = 'html2png'
+  obj = pageUrl.trim().replace(/^https?:\/\//g, '').replace(/\./g, '_').replace(/\//g, '_') + '.png'
+  objPath = path.join(dir, obj)
   screenshot(pageUrl)
-    .then(file => uploadToOss(context, file))
+    .then(file => uploadToOss(context, objPath, file))
     .then(url => callback(null, `The screenshot has been uploaded to ${url}`))
     .catch(callback);
 };
@@ -34,11 +38,11 @@ async function screenshot(url) {
   return outputFile;
 };
 
-async function uploadToOss(context, file) {
+async function uploadToOss(context, objPath, file) {
   let client = ossClient(context);
 
-  let result = await client.put('screenshot.png', file);
-  await client.putACL('screenshot.png', 'public-read');
+  let result = await client.put(objPath, file);
+  await client.putACL(objPath, 'public-read');
 
   return result.url.replace('-internal.aliyuncs.com/', '.aliyuncs.com/');
 }
